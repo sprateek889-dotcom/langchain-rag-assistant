@@ -4,5 +4,9 @@ documents = load_pdf("data/langchain-guide.pdf")
 
 print("Number of documents:", len(documents))
 
-print("\nFirst document:")
-print(documents[0])
+for i, document in enumerate(documents[:3]):
+
+    print("\n" + "=" * 50)
+    print(f"PAGE {i + 1}")
+    print("=" * 50)
+    print(document.page_content[:100])
