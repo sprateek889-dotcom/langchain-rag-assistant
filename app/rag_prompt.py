@@ -8,7 +8,11 @@ rag_prompt = ChatPromptTemplate.from_messages([
 
         Answer the user's question using only the provided context.
 
-        If the answer cannot be found in the context, say:
+        Use the conversation history to understand follow-up questions.
+
+        If the answer cannot be found in the provided context,
+        say:
+
         "I don't know based on the provided documents."
 
         Do not make up information.
@@ -16,6 +20,10 @@ rag_prompt = ChatPromptTemplate.from_messages([
         Context:
         {context}
         """
+    ),
+    (
+        "placeholder",
+        "{chat_history}"
     ),
     (
         "human",
