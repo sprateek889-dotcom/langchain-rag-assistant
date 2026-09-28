@@ -9,25 +9,36 @@ load_dotenv()
 
 
 def main():
-
     print("Starting document ingestion...")
 
-    # 1. Load documents
-    documents = load_pdf(
-        "data/langchain-guide.pdf"
-    )
+    try:
+        # 1. Load documents
+        documents = load_pdf(
+            "data/langchain-guide.pdf"
+        )
 
-    print(f"Loaded {len(documents)} document pages.")
+        print(f"Loaded {len(documents)} document pages.")
 
-    # 2. Split documents
-    chunks = split_documents(documents)
+        # 2. Split documents
+        chunks = split_documents(documents)
 
-    print(f"Created {len(chunks)} chunks.")
+        if not chunks:
+            raise ValueError(
+                "Document splitting produced no chunks."
+            )
 
-    # 3. Create vector database
-    create_vector_store(chunks)
+        print(f"Created {len(chunks)} chunks.")
 
-    print("Vector database created successfully!")
+        # 3. Create vector database
+        create_vector_store(chunks)
+
+        print("Vector database created successfully!")
+
+    except (FileNotFoundError, ValueError, RuntimeError) as error:
+        print(f"\nIngestion error: {error}")
+
+    except Exception as error:
+        print(f"\nUnexpected ingestion error: {error}")
 
 
 if __name__ == "__main__":
