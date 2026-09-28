@@ -1,5 +1,6 @@
 #from app.vector_store import create_vector_store
 from app.vector_store import load_vector_store
+from app.config import RETRIEVAL_K
 
 #Before load vector store, we need to create a 
 #retriever from the vector store. 
@@ -11,7 +12,7 @@ def create_retriever():
     vector_store = load_vector_store()
 
     retriever = vector_store.as_retriever(
-        search_kwargs={"k": 3}
+        search_kwargs={"k": RETRIEVAL_K}
     )
 
     return retriever
