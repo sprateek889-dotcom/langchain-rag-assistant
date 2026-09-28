@@ -1,5 +1,5 @@
 #from app.vector_store import create_vector_store
-from app.vectore_store import load_vector_store
+from app.vector_store import load_vector_store
 
 #Before load vector store, we need to create a 
 #retriever from the vector store. 
