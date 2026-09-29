@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from app.rag import create_rag_system
+from app.schemas import AskRequest, AskResponse
 
 from app.rag import create_rag_system
 
@@ -9,12 +10,6 @@ app = FastAPI(
     description="An API for asking questions about your documents.",
     version="1.0.0"
 )
-
-
-# Request model
-class AskRequest(BaseModel):
-    question: str
-
 
 # RAG components
 retriever = None
@@ -51,7 +46,7 @@ def health_check():
     }
 
 
-@app.post("/ask")
+@app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
     """
     Accept a question, retrieve relevant documents,
@@ -97,15 +92,15 @@ def ask_question(request: AskRequest):
         for document in documents:
             sources.append({
                 "page": document.metadata.get("page", "Unknown"),
-                "source": document.metadata.get("source", "Unknown")
+                "source": str(document.metadata.get("source", "Unknown"))
             })
 
         # 7. Return the response
-        return {
-            "question": request.question,
-            "answer": answer,
-            "sources": sources
-        }
+        return AskResponse(
+            question=request.question,
+            answer=answer,
+            sources=sources
+        )
 
     except Exception as error:
         raise HTTPException(
