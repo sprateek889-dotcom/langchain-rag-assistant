@@ -18,7 +18,8 @@ UPLOAD_DIRECTORY = Path("uploads")
 
 UPLOAD_DIRECTORY.mkdir(
     parents=True,
-    exist_ok=True
+    exist_ok=True,
+    MAX_FILE_SIZE=10 * 1024 * 1024  # 10 MB
 )
 
 # RAG components
@@ -58,41 +59,63 @@ def health_check():
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
     """
-    Upload a PDF document and save it in the uploads directory.
+    Upload a PDF document after validating its type and size.
     """
 
-    # Check whether a file was provided
     if not file.filename:
         raise HTTPException(
             status_code=400,
             detail="No file was provided."
         )
 
-    # Check the file extension
-    if Path(file.filename).suffix.lower() != ".pdf":
+    # Validate file extension
+    safe_filename = Path(file.filename).name
+
+    if Path(safe_filename).suffix.lower() != ".pdf":
         raise HTTPException(
             status_code=400,
             detail="Only PDF files are allowed."
         )
 
-    # Create a safe filename
-    safe_filename = Path(file.filename).name
-
-    # Define the destination path
-    file_path = UPLOAD_DIRECTORY / safe_filename
-
     try:
         # Read the uploaded file
         contents = await file.read()
 
-        # Save the file
+        # Validate empty file
+        if not contents:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded file is empty."
+            )
+
+        # Validate file size
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="File size exceeds the 10 MB limit."
+            )
+
+        # Validate basic PDF signature
+        if not contents.startswith(b"%PDF-"):
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded file does not appear to be a valid PDF."
+            )
+
+        # Save the validated file
+        file_path = UPLOAD_DIRECTORY / safe_filename
+
         file_path.write_bytes(contents)
 
         return {
             "message": "PDF uploaded successfully.",
             "filename": safe_filename,
-            "saved_to": str(file_path)
+            "saved_to": str(file_path),
+            "file_size_bytes": len(contents)
         }
+
+    except HTTPException:
+        raise
 
     except Exception:
         logger.exception("Failed to save uploaded document.")
