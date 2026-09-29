@@ -1,3 +1,4 @@
+import uuid
 import logging
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -15,11 +16,11 @@ app = FastAPI(
 )
 
 UPLOAD_DIRECTORY = Path("uploads")
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 UPLOAD_DIRECTORY.mkdir(
     parents=True,
-    exist_ok=True,
-    MAX_FILE_SIZE=10 * 1024 * 1024  # 10 MB
+    exist_ok=True
 )
 
 # RAG components
@@ -59,7 +60,8 @@ def health_check():
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
     """
-    Upload a PDF document after validating its type and size.
+    Upload a PDF document after validating it
+    and save it using a unique filename.
     """
 
     if not file.filename:
@@ -68,48 +70,58 @@ async def upload_document(file: UploadFile = File(...)):
             detail="No file was provided."
         )
 
-    # Validate file extension
-    safe_filename = Path(file.filename).name
+    # 1. Extract and sanitize the original filename
+    original_filename = Path(file.filename).name
 
-    if Path(safe_filename).suffix.lower() != ".pdf":
+    # 2. Validate file extension
+    if Path(original_filename).suffix.lower() != ".pdf":
         raise HTTPException(
             status_code=400,
             detail="Only PDF files are allowed."
         )
 
     try:
-        # Read the uploaded file
+        # 3. Read uploaded file
         contents = await file.read()
 
-        # Validate empty file
+        # 4. Validate empty file
         if not contents:
             raise HTTPException(
                 status_code=400,
                 detail="The uploaded file is empty."
             )
 
-        # Validate file size
+        # 5. Validate file size
         if len(contents) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=413,
                 detail="File size exceeds the 10 MB limit."
             )
 
-        # Validate basic PDF signature
+        # 6. Validate basic PDF signature
         if not contents.startswith(b"%PDF-"):
             raise HTTPException(
                 status_code=400,
                 detail="The uploaded file does not appear to be a valid PDF."
             )
 
-        # Save the validated file
+        # 7. Generate a unique filename
+        unique_id = uuid.uuid4().hex
+
+        safe_filename = f"{unique_id}-{original_filename}"
+
+        # 8. Create destination path
         file_path = UPLOAD_DIRECTORY / safe_filename
 
-        file_path.write_bytes(contents)
+        # 9. Save file without overwriting an existing file
+        with file_path.open("xb") as uploaded_file:
+            uploaded_file.write(contents)
 
+        # 10. Return upload information
         return {
             "message": "PDF uploaded successfully.",
-            "filename": safe_filename,
+            "original_filename": original_filename,
+            "saved_filename": safe_filename,
             "saved_to": str(file_path),
             "file_size_bytes": len(contents)
         }
