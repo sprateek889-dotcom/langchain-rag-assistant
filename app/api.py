@@ -1,9 +1,11 @@
+import logging
 from fastapi import FastAPI, HTTPException
 from app.rag import create_rag_system
 from app.schemas import AskRequest, AskResponse
 
 from app.rag import create_rag_system
 
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="RAG Knowledge Assistant API",
@@ -102,8 +104,13 @@ def ask_question(request: AskRequest):
             sources=sources
         )
 
-    except Exception as error:
+    except HTTPException:
+        raise
+
+    except Exception:
+        logger.exception("Unexpected error while processing the question.")
+
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process the question: {str(error)}"
-        ) from error
+            detail="An unexpected error occurred while processing your question."
+        )
