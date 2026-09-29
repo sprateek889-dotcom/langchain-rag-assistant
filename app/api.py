@@ -1,5 +1,6 @@
 import logging
-from fastapi import FastAPI, HTTPException
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from app.rag import create_rag_system
 from app.schemas import AskRequest, AskResponse
 
@@ -11,6 +12,13 @@ app = FastAPI(
     title="RAG Knowledge Assistant API",
     description="An API for asking questions about your documents.",
     version="1.0.0"
+)
+
+UPLOAD_DIRECTORY = Path("uploads")
+
+UPLOAD_DIRECTORY.mkdir(
+    parents=True,
+    exist_ok=True
 )
 
 # RAG components
@@ -47,6 +55,55 @@ def health_check():
         "message": "RAG Knowledge Assistant API is running"
     }
 
+@app.post("/upload")
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Upload a PDF document and save it in the uploads directory.
+    """
+
+    # Check whether a file was provided
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No file was provided."
+        )
+
+    # Check the file extension
+    if Path(file.filename).suffix.lower() != ".pdf":
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are allowed."
+        )
+
+    # Create a safe filename
+    safe_filename = Path(file.filename).name
+
+    # Define the destination path
+    file_path = UPLOAD_DIRECTORY / safe_filename
+
+    try:
+        # Read the uploaded file
+        contents = await file.read()
+
+        # Save the file
+        file_path.write_bytes(contents)
+
+        return {
+            "message": "PDF uploaded successfully.",
+            "filename": safe_filename,
+            "saved_to": str(file_path)
+        }
+
+    except Exception:
+        logger.exception("Failed to save uploaded document.")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save the uploaded document."
+        )
+
+    finally:
+        await file.close()
 
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
