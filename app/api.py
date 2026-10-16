@@ -2,10 +2,12 @@ import uuid
 import logging
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File
-from app.rag import create_rag_system
 from app.schemas import AskRequest, AskResponse
 
 from app.rag import create_rag_system
+from app.document_loader import load_pdf
+from app.text_splitter import split_documents
+
 
 logger = logging.getLogger(__name__)
 
@@ -117,13 +119,28 @@ async def upload_document(file: UploadFile = File(...)):
         with file_path.open("xb") as uploaded_file:
             uploaded_file.write(contents)
 
-        # 10. Return upload information
+        # 10. Load the saved PDF
+        documents = load_pdf(str(file_path))
+
+        # 11. Split the extracted documents into chunks
+        chunks = split_documents(documents)
+
+        # 12. Check whether chunks were generated
+        if not chunks:
+            raise HTTPException(
+            status_code=400,
+            detail="No text could be extracted from the uploaded PDF."
+            )        
+
+       # 13. Return upload and processing information
         return {
-            "message": "PDF uploaded successfully.",
+            "message": "PDF uploaded and processed successfully.",
             "original_filename": original_filename,
             "saved_filename": safe_filename,
             "saved_to": str(file_path),
-            "file_size_bytes": len(contents)
+            "file_size_bytes": len(contents),
+            "pages_extracted": len(documents),
+            "chunks_created": len(chunks)
         }
 
     except HTTPException:
