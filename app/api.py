@@ -7,6 +7,7 @@ from app.schemas import AskRequest, AskResponse
 from app.rag import create_rag_system
 from app.document_loader import load_pdf
 from app.text_splitter import split_documents
+from app.vector_store import add_documents_to_vector_store
 
 
 logger = logging.getLogger(__name__)
@@ -131,8 +132,10 @@ async def upload_document(file: UploadFile = File(...)):
             status_code=400,
             detail="No text could be extracted from the uploaded PDF."
             )        
+        # 13. Add chunks to the existing Chroma vector database
+        chunks_stored = add_documents_to_vector_store(chunks)
 
-       # 13. Return upload and processing information
+       # 14. Return upload and processing information
         return {
             "message": "PDF uploaded and processed successfully.",
             "original_filename": original_filename,
@@ -140,7 +143,8 @@ async def upload_document(file: UploadFile = File(...)):
             "saved_to": str(file_path),
             "file_size_bytes": len(contents),
             "pages_extracted": len(documents),
-            "chunks_created": len(chunks)
+            "chunks_created": len(chunks),
+            "chunks_stored": chunks_stored
         }
 
     except HTTPException:

@@ -64,3 +64,27 @@ def load_vector_store():
         ) from error
 
     return vector_store
+
+def add_documents_to_vector_store(chunks):
+    """
+    Add new document chunks to the existing Chroma collection.
+    """
+
+    if not chunks:
+        raise ValueError(
+            "Cannot add documents: no chunks were provided."
+        )
+
+    # Load the existing persistent vector database
+    vector_store = load_vector_store()
+
+    try:
+        # Generate embeddings and store the new chunks
+        document_ids = vector_store.add_documents(chunks)
+
+    except Exception as error:
+        raise RuntimeError(
+            "Failed to add documents to the Chroma vector store."
+        ) from error
+
+    return len(document_ids)
